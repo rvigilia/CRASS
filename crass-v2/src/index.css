@@ -1,0 +1,485 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+
+body {
+  background: #05070d;
+  color: #e6ecf7;
+  font-family: 'Lato', system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Accessibility: honour reduced-motion — neutralize ambient/infinite animations
+   and transitions without removing the declarations themselves. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Accessibility: visible keyboard focus ring keyed to the per-module accent
+   (--sys is an "R G B" triple). Falls back to system blue where no module accent
+   is set. Only applies to keyboard focus, not mouse focus. */
+/* Contextual keyboard-focus ring (keyed to the module --sys accent). Uses
+   `outline` — independent of box-shadow — so an element's own ambient glow
+   (e.g. .accent-btn) can never clobber the focus indicator. */
+:where(button, [role=button], a, input, select, textarea):focus-visible {
+  outline: 2px solid rgb(var(--sys, 96 165 250) / .9);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgb(var(--sys, 96 165 250) / .22);
+}
+
+/* App-wide tactile press feedback (Solo Leveling "System" confirm-click).
+   Zero-specificity :where() so any component's own transform/transition
+   always wins — this only fills the default for elements that don't set one. */
+:where(button, [role=button], .accent-btn):not(:disabled) {
+  transition: transform .14s var(--ease-out-system);
+}
+:where(button, [role=button], .accent-btn):not(:disabled):active {
+  transform: scale(0.96);
+}
+
+/* Nebula backdrop with faint starfield */
+.nebula-bg {
+  background:
+    radial-gradient(ellipse 42% 30% at 84% 16%, rgba(59,130,246,0.10), transparent 70%),
+    radial-gradient(ellipse 55% 38% at 96% 42%, rgba(37,99,235,0.08), transparent 70%),
+    radial-gradient(ellipse 30% 55% at 70% 0%, rgba(96,165,250,0.05), transparent 75%),
+    linear-gradient(180deg, #060910 0%, #05070d 55%, #04060b 100%);
+}
+
+/* ============================================================================
+   Premium "System" window treatment — layered borders, glass, localized light.
+   Every .card is a floating panel: soft blue rim, inset inner hairline, ambient
+   occlusion, and a masked rim-energy ring that lights up on hover / active /
+   dashboard. --sys sets each module's energy colour (blue by default).
+   ============================================================================ */
+:root { --sys: 96 165 250; --ease-out-system: cubic-bezier(0.2, 0.7, 0.2, 1); }
+.mod-quest   { --sys: 167 139 250; }   /* violet runes */
+.mod-finance { --sys: 210 176 96; }    /* restrained gold */
+.mod-research{ --sys: 45 212 191; }    /* holographic teal */
+.mod-skill   { --sys: 96 165 250; }    /* system blue */
+
+@property --rim { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+@keyframes rimFlow { to { --rim: 360deg; } }
+@keyframes winBloom {
+  0%   { opacity: 0; transform: scale(0.96); box-shadow: 0 0 0 1px rgb(var(--sys) / 0.55), 0 0 46px -6px rgb(var(--sys) / 0.5), 0 24px 60px -20px rgba(0,0,0,.82); }
+  100% { opacity: 1; transform: scale(1); box-shadow: 0 1px 0 rgba(255,255,255,.05) inset, 0 0 0 1px rgba(8,13,26,.55), 0 22px 50px -20px rgba(0,0,0,.78), 0 0 36px -14px rgb(var(--sys) / 0.16); }
+}
+
+/* "Overdrive" glass — dramatic frosted translucency, chosen after the design
+   preview (three intensities: Frost / Aether / Overdrive). Real backdrop-filter
+   blur+saturate over the nebula/ambient-drift backdrop, a brighter --sys-tinted
+   rim, and a faint scanline grain baked into the background stack itself (kept
+   out of ::before/::after since those are already spoken for by the inset
+   hairline and the rim-energy ring below). SystemWindow reuses this same class
+   (card card-active), so modals get the same glass treatment for free. */
+.card {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.05), transparent 42%),
+    repeating-linear-gradient(0deg, rgb(var(--sys) / 0.05) 0 1px, transparent 1px 3px),
+    radial-gradient(130% 90% at 50% -12%, rgb(var(--sys) / 0.12), transparent 55%),
+    linear-gradient(180deg, rgba(19, 28, 48, 0.30), rgba(7, 11, 21, 0.40));
+  backdrop-filter: blur(26px) saturate(1.7) brightness(1.06);
+  -webkit-backdrop-filter: blur(26px) saturate(1.7) brightness(1.06);
+  border: 1px solid rgb(var(--sys) / 0.38);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.08) inset,
+    0 0 0 1px rgba(8,13,26,0.4),
+    0 22px 50px -20px rgba(0,0,0,0.8),
+    0 0 44px -10px rgb(var(--sys) / 0.42);
+  transition: transform .3s var(--ease-out-system), box-shadow .3s var(--ease-out-system), border-color .3s var(--ease-out-system), backdrop-filter .3s var(--ease-out-system);
+}
+/* inset inner hairline — the second border a few px in */
+.card::before {
+  content:''; position:absolute; inset:4px; border-radius:12px; pointer-events:none;
+  border: 1px solid rgb(var(--sys) / 0.05);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset;
+}
+/* rim-energy ring, masked to the border; lit on hover / active / dashboard */
+.card::after {
+  content:''; position:absolute; inset:0; border-radius:inherit; padding:1px; pointer-events:none;
+  background: conic-gradient(from var(--rim), transparent 0 60%, rgb(var(--sys) / 0.55) 76%, transparent 90%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0; transition: opacity .35s ease;
+}
+/* hover = one crisp spring-like lift: the BORDER TRIM lights up like an LED
+   strip (bright edge + a controlled OUTER bloom, almost no interior glow). The
+   box-shadow is a single static state that eases in via the .card transition —
+   no competing keyframe pulse, so hover feels crisp rather than floaty. */
+.card:hover {
+  transform: translateY(-3px) scale(1.01);
+  border-color: rgb(var(--sys) / 0.9);
+  box-shadow:
+    0 0 0 1px rgb(var(--sys) / 0.82),
+    0 0 22px -6px rgb(var(--sys) / 0.34),
+    0 22px 50px -20px rgba(0,0,0,0.85);
+}
+/* inner hairline just crisps up — no inward bloom */
+.card:hover::before { border-color: rgb(var(--sys) / 0.16); box-shadow: none; }
+/* rim energy: calm by default; dashboard windows breathe faintly; hover/active energize */
+.dash .card::after { opacity: .2; }
+.card:hover::after, .card-active::after { opacity: .9; animation: rimFlow 4.5s linear infinite; }
+.card-active { animation: winBloom .55s ease; }
+/* hovering one dashboard window pushes the others back for contrast */
+.dash:has(.card:hover) .card:not(:hover) { opacity: .82; transform: translateY(0) scale(0.995); }
+/* quest row: blue energy sweeps across on hover */
+.qrow { position: relative; overflow: hidden; }
+.qrow::after { content:''; position:absolute; inset:0; pointer-events:none; transform: translateX(-120%);
+  background: linear-gradient(90deg, transparent, rgba(96,165,250,0.16), transparent); }
+.qrow:hover::after { animation: qsweep .9s ease; }
+@keyframes qsweep { to { transform: translateX(120%); } }
+/* task-complete particle burst */
+@keyframes taskBurst { 0% { transform: scale(0); opacity: .9; } 100% { transform: scale(1); opacity: 0; } }
+
+/* ===== Quest Tracker — checkbox micro-interactions + card-level celebration =====
+   A juicier variant of taskBurst scoped to the Quest Tracker's own checkbox (see
+   QuestBurst.jsx) — a bright core flash, two staggered rings, and a wider spark
+   scatter — plus the "whole card just cleared" celebration (QuestCelebration.jsx)
+   used by both the compact dashboard card and the full Quest Journal page. */
+@keyframes questFlashCore { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
+@keyframes questRing1 { 0% { transform: scale(.2); opacity: .95; } 100% { transform: scale(1); opacity: 0; } }
+@keyframes questRing2 { 0% { transform: scale(.2); opacity: .7; } 100% { transform: scale(1.7); opacity: 0; } }
+@keyframes questSpark {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--qsx), var(--qsy)) scale(.3); opacity: 0; }
+}
+
+@keyframes questCelebrateGlow {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(167,139,250,0.3), 0 0 0 rgba(167,139,250,0); }
+  20% { box-shadow: 0 0 0 1px rgba(167,139,250,0.75), 0 0 46px 6px rgba(167,139,250,0.38); }
+  50% { box-shadow: 0 0 0 1px rgba(167,139,250,0.55), 0 0 30px 2px rgba(167,139,250,0.22); }
+  75% { box-shadow: 0 0 0 1px rgba(167,139,250,0.65), 0 0 40px 4px rgba(167,139,250,0.3); }
+}
+.qc-glow { animation: questCelebrateGlow 2.4s var(--ease-out-system) both; border-radius: inherit; }
+
+@keyframes questCelebrateBadge {
+  0% { opacity: 0; transform: translate(-50%, -46%) scale(.82); }
+  14% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -54%) scale(.96); }
+}
+.qc-badge { animation: questCelebrateBadge 2.4s var(--ease-out-system) both; }
+
+@keyframes questCelebrateSweep { to { transform: translateX(160%); } }
+.qc-sweep { animation: questCelebrateSweep 1.1s var(--ease-out-system) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .qc-glow, .qc-badge, .qc-sweep { animation: none; }
+}
+
+/* compact QuestColumn row flash on accept — same box-shadow pulse language as
+   QuestJournalColumn's .qj-row-accept, scoped to .qrow's own --acc colour. */
+@keyframes qcRowAccept {
+  0% { box-shadow: 0 0 0 0 transparent; background: transparent; }
+  30% { box-shadow: 0 0 16px 1px var(--acc); background: color-mix(in srgb, var(--acc) 10%, transparent); }
+  100% { box-shadow: 0 0 0 0 transparent; background: transparent; }
+}
+.qrow-accept { animation: qcRowAccept .65s ease-out; }
+@media (prefers-reduced-motion: reduce) { .qrow-accept { animation: none; } }
+
+/* Quote of the Day — one-shot cyan/blue "energy pass" sweep across the hero
+   quote text, 10s after page load (HeroSection.jsx). A duplicate text layer
+   sits on top of the real quote, clipped to a moving gradient and blended
+   additively so it reads as light passing through rather than a color swap.
+   Same cyan→blue pair as the Hero progress ring, for visual consistency. */
+.quote-glow-sweep {
+  background: linear-gradient(100deg, transparent 30%, rgba(34,211,238,0.95) 46%, rgba(96,165,250,0.95) 54%, transparent 70%);
+  background-size: 220% 100%;
+  background-position: -120% 0;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  mix-blend-mode: screen;
+  filter: drop-shadow(0 0 6px rgba(34,211,238,0.55));
+  animation: quoteSweep 1.9s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes quoteSweep { to { background-position: 120% 0; } }
+@media (prefers-reduced-motion: reduce) { .quote-glow-sweep { animation: none; display: none; } }
+/* ============================================================================
+   Calendar "now" indicator — an Igris blade tracking the current time.
+   The sword lies across the current-time row (hilt on the axis, tip trailing a
+   red energy beam), glowing and shedding wisps of energy. The time reads in red
+   in the gutter, on a red node. Hovering an event fades the sword so the event
+   stays legible.
+   ============================================================================ */
+/* -- LED separators: horizontal (hour) solid, half-hour dotted, vertical cooler blue -- */
+.cal-hourcell { border-bottom: 1px solid rgba(96,165,250,0.17); }
+.cal-halfline { position: absolute; left: 0; right: 0; top: 50%; pointer-events: none;
+  border-top: 1px dashed rgba(120,180,255,0.11); }
+.cal-vsep { border-left: 1px solid rgba(138,196,255,0.14); }   /* vertical LED blue — slightly brighter/cooler than horizontal */
+
+/* -- precise cursor hover: 30-min block tint + snapped-15 marker line & time tag -- */
+.cal-hoverblock { position: absolute; left: 0; right: 0; background: rgba(96,165,250,0.10); pointer-events: none; }
+.cal-hoverline { position: absolute; left: 0; right: 0; height: 0; border-top: 1px solid rgba(120,180,255,0.5); pointer-events: none; }
+.cal-hoverline-q { border-top: 1px solid rgba(96,165,250,0.95); box-shadow: 0 0 6px rgba(96,165,250,0.6); }
+.cal-hovertag { position: absolute; left: 2px; transform: translateY(-50%); padding: 0 4px; border-radius: 4px;
+  font-size: 9.5px; font-weight: 700; line-height: 1.4; color: #bcd4ff; background: rgba(10,16,28,0.85);
+  font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap; }
+.cal-hovertag-q { color: #e6ecf7; background: rgba(37,99,235,0.6); }
+
+/* -- gutter red time read-out (smaller than the hour labels) + static node -- */
+/* red time read-out (large, like the reference) stacked over a 4-point star node */
+.cal-nowgutter {
+  position: absolute; right: 9px; transform: translateY(-50%);
+  display: flex; flex-direction: column; align-items: flex-end; line-height: 0.9; white-space: nowrap; z-index: 40;
+}
+.cal-nowgutter-t { font-size: 15px; font-weight: 800; color: #ff415c; text-shadow: 0 0 9px rgba(255,45,74,0.75); font-variant-numeric: tabular-nums; }
+.cal-nowgutter-m { font-size: 8.5px; font-weight: 700; color: #ff6376; letter-spacing: .08em; margin-top: 1px; }
+.cal-nownode {
+  position: absolute; right: -10px; top: 50%; width: 13px; height: 13px; margin-top: -6.5px;
+  background: radial-gradient(circle at 50% 50%, #fff 0%, #ff3350 45%, #b3122b 100%);
+  clip-path: polygon(50% 0%, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0% 50%, 40% 40%);
+  filter: drop-shadow(0 0 5px rgba(255,45,74,0.95));
+}
+
+/* faint red band across the current row + a red segment lighting the axis */
+.cal-nowrow {
+  position: absolute; left: 0; right: 0; top: 50%; height: 30px; transform: translateY(-50%); pointer-events: none;
+  background: linear-gradient(90deg, rgba(255,45,74,0.16), rgba(255,45,74,0.07) 55%, rgba(255,45,74,0.02));
+}
+.cal-nowaxis {
+  position: absolute; left: 0; top: 50%; width: 2px; height: 30px; transform: translate(-1px,-50%);
+  background: linear-gradient(180deg, transparent, #ff3350 50%, transparent);
+  box-shadow: 0 0 7px rgba(255,45,74,0.8);
+}
+
+/* sword lies along the row (hilt on the axis) and stretches most of the way; the
+   LED beam finishes the rest of the width to the day's right border. Glow only. */
+.cal-nowsword-wrap {
+  position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center;
+}
+.cal-nowsword {
+  height: 22px; width: clamp(56px, 38%, 230px); max-width: 76%; flex: none; margin-left: -4px; object-fit: fill;
+  filter: drop-shadow(0 0 3px rgba(255,45,74,0.8)) drop-shadow(0 0 8px rgba(255,60,90,0.42));
+}
+.cal-nowlaser {
+  flex: 1 1 auto; height: 2px; margin-left: -3px; border-radius: 2px;
+  background: linear-gradient(90deg, #ff2d4a 0%, #ff5566 45%, rgba(255,45,74,0.55) 100%);
+  box-shadow: 0 0 8px rgba(255,45,74,0.9), 0 0 18px rgba(255,45,74,0.45);
+}
+
+/* faint red energy wisps + drifting sparks around the blade (as in the reference) */
+.cal-wisp {
+  position: absolute; top: 50%; width: 32px; height: 15px; pointer-events: none;
+  border-radius: 60%; border: 1.5px solid transparent; border-top-color: rgba(255,70,95,0.38);
+  filter: blur(1px); transform: translateY(-50%);
+}
+.cal-wisp1 { left: 52%; animation: calWisp 4.4s ease-in-out infinite; }
+.cal-wisp2 { left: 63%; width: 40px; height: 20px; animation: calWisp 5.6s ease-in-out infinite 1.6s; }
+@keyframes calWisp {
+  0%   { opacity: 0; transform: translateY(-50%) rotate(0deg) scale(0.8); }
+  40%  { opacity: 0.5; }
+  100% { opacity: 0; transform: translate(8%,-150%) rotate(160deg) scale(1.25); }
+}
+.cal-spark {
+  position: absolute; top: 50%; width: 3px; height: 3px; border-radius: 50%;
+  background: #ff5e78; box-shadow: 0 0 6px 1px rgba(255,70,95,0.9); pointer-events: none; opacity: 0;
+}
+.cal-spark1 { left: 55%; animation: calSpark 3.4s ease-out infinite; }
+.cal-spark2 { left: 66%; animation: calSpark 4.2s ease-out infinite 1s; }
+.cal-spark3 { left: 74%; animation: calSpark 3.8s ease-out infinite 1.9s; }
+.cal-spark4 { left: 60%; animation: calSpark 4.6s ease-out infinite 2.7s; }
+@keyframes calSpark {
+  0%   { opacity: 0; transform: translate(0,-50%) scale(0.6); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: translate(30px,-240%) scale(0.3); }
+}
+
+/* hovering an event in the current day fades the sword so the event stays readable */
+.cal-daycol:has(.cal-event:hover) .cal-now { opacity: 0.12; transition: opacity .18s ease; }
+.cal-now { transition: opacity .25s ease; }
+
+/* ===== Shared "System window" HUD pieces — corner brackets (.qj-corner*),
+   the scanline texture (.sys-scan), and the System typography pair
+   (.qj-title / .qj-num) started life scoped to Quest Journal but are plain
+   global classes (not actually nested under .qj-root), so other panels can
+   opt into the same look a la carte: brackets + typography without the
+   opaque .qj-panel background where something needs to show through (e.g.
+   the Dashboard hero's shadow-energy field), or brackets + scanline where
+   there's no such conflict (Skill Tree's top bar, the node info window). */
+.sys-scan { position: relative; }
+.sys-scan::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.4;
+  background: repeating-linear-gradient(0deg, rgba(120,180,255,0.04) 0 1px, transparent 1px 3px);
+}
+
+/* ===== Quest Journal — Solo Leveling "System" quest log (scoped to .qj-root) ===== */
+.qj-title { font-family: 'Rajdhani', 'Lato', system-ui, sans-serif; letter-spacing: 0.01em; }
+.qj-num { font-family: 'Share Tech Mono', 'Nunito', ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+.qj-banner {
+  position: relative; overflow: hidden;
+  background:
+    radial-gradient(120% 160% at 50% -30%, rgba(59,130,246,0.24), transparent 60%),
+    linear-gradient(180deg, rgba(7,12,24,0.34), rgba(5,7,13,0.42));
+  backdrop-filter: blur(28px) saturate(1.7) brightness(1.06);
+  -webkit-backdrop-filter: blur(28px) saturate(1.7) brightness(1.06);
+  border: 1px solid rgba(96,165,250,0.40);
+  box-shadow: inset 0 0 40px rgba(59,130,246,0.08), 0 20px 56px -22px rgba(0,0,0,0.8), 0 0 44px -8px rgba(96,165,250,0.4);
+  border-radius: 14px;
+}
+.qj-banner::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; opacity: 0.5; border-radius: 14px;
+  background: repeating-linear-gradient(0deg, rgba(120,180,255,0.05) 0 1px, transparent 1px 3px);
+}
+.qj-sigil {
+  width: 42px; height: 42px; flex: none; display: flex; align-items: center; justify-content: center;
+  font-size: 20px; color: #7cc4ff; border: 1px solid rgba(96,165,250,0.4); border-radius: 10px;
+  background: rgba(59,130,246,0.10); box-shadow: 0 0 14px rgba(59,130,246,0.35), inset 0 0 10px rgba(59,130,246,0.15);
+  text-shadow: 0 0 8px rgba(124,196,255,0.9);
+}
+
+.qj-panel {
+  position: relative; overflow: hidden;
+  background: linear-gradient(180deg, rgba(10,16,28,0.46), rgba(6,9,15,0.50));
+  backdrop-filter: blur(22px) saturate(1.6) brightness(1.05);
+  -webkit-backdrop-filter: blur(22px) saturate(1.6) brightness(1.05);
+  border: 1px solid rgba(96,165,250,0.30);
+  border-radius: 12px;
+  box-shadow: inset 0 0 30px rgba(59,130,246,0.07), 0 0 30px -12px rgba(96,165,250,0.35);
+}
+.qj-panel::before {
+  content: ''; position: absolute; inset: 0; border-radius: 12px; pointer-events: none; opacity: 0.4;
+  background: repeating-linear-gradient(0deg, rgba(120,180,255,0.04) 0 1px, transparent 1px 3px);
+}
+
+/* electric-blue corner brackets */
+.qj-corner { position: absolute; width: 13px; height: 13px; border: 2px solid rgba(96,165,250,0.8); pointer-events: none; filter: drop-shadow(0 0 4px rgba(96,165,250,0.55)); z-index: 5; }
+.qj-corner-tl { top: -1px; left: -1px; border-right: 0; border-bottom: 0; border-top-left-radius: 7px; }
+.qj-corner-tr { top: -1px; right: -1px; border-left: 0; border-bottom: 0; border-top-right-radius: 7px; }
+.qj-corner-bl { bottom: -1px; left: -1px; border-right: 0; border-top: 0; border-bottom-left-radius: 7px; }
+.qj-corner-br { bottom: -1px; right: -1px; border-left: 0; border-top: 0; border-bottom-right-radius: 7px; }
+
+.qj-icobox { width: 24px; height: 24px; flex: none; display: flex; align-items: center; justify-content: center; border: 1px solid; border-radius: 7px; background: rgba(255,255,255,0.02); }
+
+.qj-row { transition: background .16s ease; }
+.qj-row:hover { background: rgba(120,180,255,0.05); }
+.qj-accent { position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 0 3px 3px 0; }
+.qj-node { width: 14px; height: 14px; transform: rotate(45deg); border-width: 1.5px; border-style: solid; border-radius: 3px; transition: box-shadow .2s ease, background .2s ease; cursor: pointer; }
+
+@keyframes qjAccept {
+  0% { box-shadow: 0 0 0 0 transparent; }
+  30% { box-shadow: 0 0 18px 2px var(--acc); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.qj-row-accept { animation: qjAccept .65s ease-out; }
+
+.qj-add { border: 1px dashed; background: transparent; transition: background .16s ease, border-color .16s ease; }
+.qj-add:hover { background: rgba(120,180,255,0.06); }
+
+@media (prefers-reduced-motion: reduce) { .qj-row-accept { animation: none; } }
+/* frosted-glass left sidebar — translucent, blurred, with a soft inner sheen */
+.sb-glass {
+  background:
+    linear-gradient(180deg, rgba(18,26,44,0.62), rgba(8,13,25,0.52) 55%, rgba(6,10,20,0.60)),
+    radial-gradient(120% 40% at 0% 0%, rgba(96,165,250,0.10), transparent 60%);
+  backdrop-filter: blur(20px) saturate(1.35);
+  -webkit-backdrop-filter: blur(20px) saturate(1.35);
+  border-right: 1px solid rgba(255,255,255,0.09);
+  box-shadow:
+    inset -1px 0 0 rgba(255,255,255,0.04),
+    inset 1px 0 0 rgba(255,255,255,0.05),
+    1px 0 48px -22px rgba(0,0,0,0.7);
+}
+
+/* calendar window: border stays lit while the Calendar page is open (not just on hover) */
+.cal-card {
+  border-color: rgb(var(--sys) / 0.55);
+  box-shadow:
+    0 0 0 1px rgb(var(--sys) / 0.42),
+    0 0 26px -8px rgb(var(--sys) / 0.38),
+    0 22px 50px -20px rgba(0,0,0,0.85);
+}
+.cal-card::after { opacity: .8; animation: rimFlow 6.5s linear infinite; }
+.cal-card:hover { transform: none; }   /* it's a full-width panel — no lift */
+
+/* glass event blocks — delicate frosted panels tinted by the event colour */
+.cal-event {
+  border-radius: 9px;
+  border: 1px solid rgba(255,255,255,0.10);
+  backdrop-filter: blur(4px) saturate(1.2);
+  -webkit-backdrop-filter: blur(4px) saturate(1.2);
+  transition: box-shadow .2s ease, transform .12s ease;
+}
+.cal-event::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.14), transparent 42%);
+}
+.cal-event:hover { transform: translateY(-1px); }
+
+/* sidebar labels fade + slide as it expands */
+@keyframes sbLabelIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+.sb-label { animation: sbLabelIn .34s cubic-bezier(.22,.61,.36,1) both; }
+.sb-label:nth-child(2) { animation-delay: .03s; }
+
+.accent-btn {
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.35), rgba(59, 130, 246, 0.18));
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  box-shadow: 0 0 22px rgba(59, 130, 246, 0.22);
+}
+.accent-btn:hover { border-color: rgba(147, 197, 253, 0.7); }
+
+.thin-track { height: 4px; border-radius: 2px; background: rgba(51, 65, 85, 0.55); overflow: hidden; }
+.thin-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, #2563eb, #60a5fa); transition: width .6s var(--ease-out-system); }
+
+.custom-scrollbar::-webkit-scrollbar { width: 3px; height: 3px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(148, 163, 184, 0.25); border-radius: 3px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(148, 163, 184, 0.5); }
+
+/* ---------- rich-text note editor ---------- */
+.note-body:empty:before{ content: attr(data-placeholder); color: #7688a6; }
+.note-body ul{ list-style: disc; padding-left: 1.4em; margin: 0.3em 0; }
+.note-body ol{ list-style: decimal; padding-left: 1.6em; margin: 0.3em 0; }
+.note-body li{ margin: 0.15em 0; }
+.note-body a{ color: #60a5fa; text-decoration: underline; }
+/* nested outline: 1. -> a. -> i. -> repeat */
+.note-body ol.note-outline{ list-style-type: decimal; }
+.note-body ol.note-outline ol{ list-style-type: lower-alpha; }
+.note-body ol.note-outline ol ol{ list-style-type: lower-roman; }
+.note-body ol.note-outline ol ol ol{ list-style-type: decimal; }
+/* read-only rendering in cards reuses the same */
+.note-render ul{ list-style: disc; padding-left: 1.4em; }
+.note-render ol{ list-style: decimal; padding-left: 1.6em; }
+/* tables */
+.note-body .note-tablebox, .note-render .note-tablebox{
+  display: inline-block; max-width: 100%; overflow: auto; resize: both; margin: 0.5em 0;
+  border: 1px dashed rgba(148,163,184,0.18); border-radius: 6px; padding: 2px; }
+.note-body table.note-table, .note-render table.note-table{ border-collapse: collapse; width: 100%; height: 100%; }
+.note-body table.note-table td, .note-body table.note-table th,
+.note-render table.note-table td, .note-render table.note-table th{
+  border: 1px solid rgba(148,163,184,0.42); padding: 5px 9px; min-width: 44px; min-height: 26px;
+  vertical-align: top; overflow: auto; resize: both; }
+/* resizable pasted images */
+.note-body .note-imgbox, .note-render .note-imgbox{
+  display: inline-block; overflow: hidden; resize: both; max-width: 100%; line-height: 0;
+  vertical-align: top; border: 1px solid rgba(148,163,184,0.14); border-radius: 6px; }
+.note-body .note-imgbox img, .note-render .note-imgbox img{ width: 100%; height: 100%; object-fit: contain; display: block; }
+
+@keyframes qtShimmer { 0% { transform: translateX(-100%); } 60%, 100% { transform: translateX(100%); } }
+
+/* ---------- ambient backdrop (Layout.jsx AmbientDrift) ---------- */
+.amb-pulse {
+  background: radial-gradient(60% 46% at 50% 38%, rgba(96,165,250,0.05), transparent 70%);
+  animation: ambPulse 11s ease-in-out infinite;
+}
+@keyframes ambPulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+.amb-mote {
+  background: radial-gradient(circle, rgba(148,197,255,0.55), rgba(148,197,255,0) 70%);
+  animation: ambFloat 16s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+@keyframes ambFloat {
+  0%, 100% { transform: translateY(0); opacity: .12; }
+  50%      { transform: translateY(-22px); opacity: .38; }
+}
