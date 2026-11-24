@@ -1,6 +1,7 @@
 // Ash's voice: turns a short line of text into speech with Inworld TTS.
 //
-//   POST /api/speak { acct, authToken, text } -> { audio: <base64 mp3>, mime } | { error }
+//   POST /api/speak { acct, authToken, text } -> { audio: <base64 mp3>, mime, lipsync? } | { error }
+//   lipsync = { v: OpenXR visemes, s: start seconds, e: end seconds } for Ash's mouth (v0.53)
 //
 // The Inworld key lives only in Vercel env (INWORLD_API_KEY, the Base64 credential from
 // the Inworld portal, sent as-is). Same owner-only check as /api/assistant. A daily
@@ -68,14 +69,18 @@ export default async function handler(req, res) {
     const modelId = String(process.env.INWORLD_MODEL || 'inworld-tts-2');
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), 25000);
+    // lipsyncConfig: timed mouth shapes (OpenXR visemes) for Ash's hologram. If Inworld ever
+    // refuses it, the line is asked for again without it (the avatar falls back to loudness).
+    const ask = (lipsync) => fetch(`${API}/tts/v1/voice`, {
+      method: 'POST',
+      headers: { Authorization: `Basic ${key}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ text, voiceId, modelId, audioConfig: { audioEncoding: 'MP3', sampleRateHertz: 24000 }, ...(lipsync ? { lipsyncConfig: {} } : {}) }),
+      signal: ctl.signal,
+    });
     let r;
     try {
-      r = await fetch(`${API}/tts/v1/voice`, {
-        method: 'POST',
-        headers: { Authorization: `Basic ${key}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ text, voiceId, modelId, audioConfig: { audioEncoding: 'MP3', sampleRateHertz: 24000 } }),
-        signal: ctl.signal,
-      });
+      r = await ask(true);
+      if (r.status === 400) r = await ask(false);
     } catch (e) {
       await refund(redis, capKey, text.length);
       throw e;
@@ -87,7 +92,12 @@ export default async function handler(req, res) {
       if (/voice/i.test(msg) && /not found|unknown/i.test(msg)) { try { await redis(['DEL', `crass:ash:voice:${String(process.env.INWORLD_VOICE || 'Brooke').toLowerCase()}`]); } catch { /* ignore */ } }
       return res.status(502).json({ error: 'upstream', status: r.status, message: msg });
     }
-    return res.status(200).json({ audio: out.audioContent, mime: 'audio/mpeg' });
+    // { v: [viseme], s: [start s], e: [end s] } when Inworld sent them (they may be absent)
+    const la = out.timestampInfo && out.timestampInfo.lipsyncAlignment;
+    const lipsync = la && Array.isArray(la.visemes) && la.visemes.length
+      && la.visemes.length === (la.visemeStartTimeSeconds || []).length && la.visemes.length === (la.visemeEndTimeSeconds || []).length
+      ? { v: la.visemes, s: la.visemeStartTimeSeconds, e: la.visemeEndTimeSeconds } : undefined;
+    return res.status(200).json({ audio: out.audioContent, mime: 'audio/mpeg', lipsync });
   } catch (e) {
     if (e && e.kv) return storeDown(res);
     const aborted = e && e.name === 'AbortError';
